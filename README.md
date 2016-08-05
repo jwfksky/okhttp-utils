@@ -1,379 +1,416 @@
 # okhttp-utils
-okhttp的辅助类
+对okhttp的封装类，okhttp见：[https://github.com/square/okhttp](https://github.com/square/okhttp).
 
-[toc]
+目前对应okhttp版本`3.3.1`.
 
 ## 用法
 
 * Android Studio
-
-	使用前，对于Android Studio的用户，可以选择添加:
-
+	
 	```
-	compile 'com.squareup.okhttp:okhttp:2.4.0'
-	compile 'com.squareup.okio:okio:1.5.0'
-
+	compile 'com.zhy:okhttputils:2.6.2'
 	```
+	
+* Eclipse
+	
+	下载最新jar:[okhttputils-2\_6\_2.jar](okhttputils-2_6_2.jar?raw=true)
 
-* Eclispe
+	注：需要同时导入okhttp和okio的jar，下载见：[https://github.com/square/okhttp](https://github.com/square/okhttp).
+	
 
-	Eclipse的用户，可以下载jar [okhttp  JAR](https://search.maven.org/remote_content?g=com.squareup.okhttp&a=okhttp&v=LATEST)和 [okio JAR](https://search.maven.org/remote_content?g=com.squareup.okio&a=okio&v=LATEST)添加依赖就可以用了。
-
-**注意**
-
-由于整合了Gson，支持直接返回对象（例如`User`），对象集合(例如：`List<User>` )，所以记得使用时必须加入Gson的依赖，jar包[gson-2.2.1.jar](gson-2.2.1.jar).
-
-sample项目的代码也上传了，大家可以下载参考里面的依赖，以及示例用法。ps:以module的形式导入。
-
-最后将[OkHttpClientManager](OkHttpClientManager.java)拷贝到项目即可。
-
-##目前支持
+## 目前对以下需求进行了封装
 * 一般的get请求
 * 一般的post请求
-* 基于Http的文件上传
-* 文件下载
-* 加载图片
-* 支持请求回调，直接返回对象、对象集合
+* 基于Http Post的文件上传（类似表单）
+* 文件下载/加载图片
+* 上传下载的进度回调
+* 支持取消某个请求
+* 支持自定义Callback
+* 支持HEAD、DELETE、PATCH、PUT
 * 支持session的保持
 * 支持自签名网站https的访问，提供方法设置下证书就行
-* 支持取消某个请求
 
+## 配置OkhttpClient
 
-##用法示例
-
-### GET请求
+默认情况下，将直接使用okhttp默认的配置生成OkhttpClient，如果你有任何配置，记得在Application中调用`initClient`方法进行设置。
 
 ```java
-OkHttpClientManager.getAsyn("http://192.168.56.1:8080/okHttpServer/user!getSimpleString", new OkHttpClientManager.ResultCallback<String>()
-{
-    @Override
-    public void onError(Request request, Exception e)
-    {
-        e.printStackTrace();
-    }
-
-    @Override
-    public void onResponse(String u)
-    {
-        mTv.setText(u);
-    }
-});
-```
-
-### 直接返回对象
-
-```java
- OkHttpClientManager.getAsyn("http://192.168.56.1:8080/okHttpServer/user!getUser",
-new OkHttpClientManager.ResultCallback<User>()
-{
-    @Override
-    public void onError(Request request, Exception e)
-    {
-        e.printStackTrace();
-    }
-
-    @Override
-    public void onResponse(User u)
-    {
-        mTv.setText(u.toString());
-    }
-});
-
-```
-注意会根据传入的泛型，比如User，则会将服务器返回的Json字符串转化为user对象，如果在转化过程中发生错误，onError会被回调。记得加入Gson的依赖。
-
-
-### 直接返回对象集合
-
-```java
-OkHttpClientManager.getAsyn("http://192.168.56.1:8080/okHttpServer/user!getUsers",
-    new OkHttpClientManager.ResultCallback<List<User>>()
-    {
-        @Override
-        public void onError(Request request, Exception e)
-        {
-            e.printStackTrace();
-        }
-
-        @Override
-        public void onResponse(List<User> us)
-        {
-            Log.e("TAG", us.size() + "");
-            mTv.setText(us.get(1).toString());
-        }
-    });
-```
-注意会根据传入的泛型，比如List<User>，则会将服务器返回的Json字符串转化为List<User>对象，如果在转化过程中发生错误，onError会被回调。记得加入Gson的依赖。
-
-### POST请求
-
-```java
- OkHttpClientManager.postAsyn(url,callback,params);
-```
-
-### 基于HTTP POST的大文件上传（可包一般键值对）
-
-```java
-File file = new File(Environment.getExternalStorageDirectory(), "test1.txt");
-
-if (!file.exists())
-{
- 
-  return;
-}
-
-OkHttpClientManager.getUploadDelegate().postAsyn("http://192.168.1.103:8080/okHttpServer/fileUpload",//
-      "mFile",//
-      file,//
-      new OkHttpClientManager.Param[]{
-              new OkHttpClientManager.Param("username", "zhy"),
-              new OkHttpClientManager.Param("password", "123")},//
-      new OkHttpClientManager.ResultCallback<String>()
-      {
-          @Override
-          public void onError(Request request, Exception e)
-          {
-              e.printStackTrace();
-          }
-
-          @Override
-          public void onResponse(String filePath)
-          {
-              Log.e("TAG", filePath);
-          }
-      }
-);
-```
-
-### 显示图片
-
-```java
-  OkHttpClientManager.getDisplayImageDelegate()
-  	.displayImage(mImageView, 
-  		"http://images.csdn.net/20150817/1.jpg");
- 
-
-```
-会自动根据ImageView的大小进行压缩。
-
-### 大文件下载
-
-```java
- OkHttpClientManager.getDownloadDelegate().downloadAsyn(
- "url",
- Environment.getExternalStorageDirectory().getAbsolutePath(),
- new OkHttpClientManager.ResultCallback<String>()
- {
-     @Override
-     public void onError(Request request, Exception e)
-     {
-     }
-
-     @Override
-     public void onResponse(String response)
-     {
-         Toast.makeText(MainActivity.this, response + "下载成功", Toast.LENGTH_SHORT).show();
-     }
- });
-```
-
-### 自签名网站https的访问
-
-非常简单，拿到xxx.cert的证书。
-
-然后调用
-
-```xml
-
-OkHttpClientManager.getInstance()
-		.getHttpsDelegate()
-       .setCertificates(inputstream);
-```
-
-建议使用方式，例如我的证书放在assets目录：
-
-```java
-
-/**
- * Created by zhy on 15/8/25.
- */
 public class MyApplication extends Application
-{
-    @Override
+{	
+	@Override
     public void onCreate()
     {
         super.onCreate();
 
-        try
-        {
-            OkHttpClientManager.getInstance()
-            			.getHttpsDelegate()
-                    .setCertificates(getAssets().open("aaa.cer"),
-                            getAssets().open("server.cer"));
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+//                .addInterceptor(new LoggerInterceptor("TAG"))
+                  .connectTimeout(10000L, TimeUnit.MILLISECONDS)
+                  .readTimeout(10000L, TimeUnit.MILLISECONDS)
+                  //其他配置
+                 .build();
+                 
+        OkHttpUtils.initClient(okHttpClient);
+
     }
 }
 ```
-即可。别忘了注册Application。
+别忘了在AndroidManifest中设置。
+
+## 对于Cookie(包含Session)
+
+对于cookie一样，直接通过cookiejar方法配置，参考上面的配置过程。
+
+```
+CookieJarImpl cookieJar = new CookieJarImpl(new PersistentCookieStore(getApplicationContext()));
+OkHttpClient okHttpClient = new OkHttpClient.Builder()
+          .cookieJar(cookieJar)
+          //其他配置
+         .build();
+                 
+OkHttpUtils.initClient(okHttpClient);
+```
+目前项目中包含：
+
+* PersistentCookieStore //持久化cookie
+* SerializableHttpCookie //持久化cookie
+* MemoryCookieStore //cookie信息存在内存中
+
+如果遇到问题，欢迎反馈，当然也可以自己实现CookieJar接口，编写cookie管理相关代码。
+
+此外，对于持久化cookie还可以使用[https://github.com/franmontiel/PersistentCookieJar](https://github.com/franmontiel/PersistentCookieJar).
+
+相当于框架中只是提供了几个实现类，你可以自行定制或者选择使用。
+
+## 对于Log
+
+初始化OkhttpClient时，通过设置拦截器实现，框架中提供了一个`LoggerInterceptor `，当然你可以自行实现一个Interceptor 。
+
+```
+ OkHttpClient okHttpClient = new OkHttpClient.Builder()
+       .addInterceptor(new LoggerInterceptor("TAG"))
+        //其他配置
+        .build();
+OkHttpUtils.initClient(okHttpClient);
+```
 
 
-### 高级用法
+## 对于Https
 
-ResultCallback包含两个回调，`onBefore`和`onAfter`。两个方法都在UI线程回调，一个在请求开始前，一个是请求结束。所以你可以在`onBefore `弹出等待框等操作，`onAfter`隐藏等待框等。
+依然是通过配置即可，框架中提供了一个类`HttpsUtils`
+
+* 设置可访问所有的https网站
+
+```
+HttpsUtils.SSLParams sslParams = HttpsUtils.getSslSocketFactory(null, null, null);
+OkHttpClient okHttpClient = new OkHttpClient.Builder()
+        .sslSocketFactory(sslParams.sSLSocketFactory, sslParams.trustManager)
+         //其他配置
+         .build();
+OkHttpUtils.initClient(okHttpClient);
+```
+
+* 设置具体的证书
+
+```
+HttpsUtils.SSLParams sslParams = HttpsUtils.getSslSocketFactory(证书的inputstream, null, null);
+OkHttpClient okHttpClient = new OkHttpClient.Builder()
+        .sslSocketFactory(sslParams.sSLSocketFactory, sslParams.trustManager))
+         //其他配置
+         .build();
+OkHttpUtils.initClient(okHttpClient);
+```
+
+* 双向认证
+
+```
+HttpsUtils.getSslSocketFactory(
+	证书的inputstream, 
+	本地证书的inputstream, 
+	本地证书的密码)
+```
+
+同样的，框架中只是提供了几个实现类，你可以自行实现`SSLSocketFactory`，传入sslSocketFactory即可。
+
+##其他用法示例
+
+### GET请求
 
 ```java
-OkHttpClientManager.getAsyn("http://192.168.56.1:8080/okHttpServer/user!getUser",
-new OkHttpClientManager.ResultCallback<User>()
-{
-	@Override
-    public void onBefore(Request request)
-    {
-        showWaitingDialog();
-    }
-    
-    @Override
-    public void onAfter()
-    {
-        dismissWaitingDialog();
-    }
+String url = "http://www.csdn.net/";
+OkHttpUtils
+    .get()
+    .url(url)
+    .addParams("username", "hyman")
+    .addParams("password", "123")
+    .build()
+    .execute(new StringCallback()
+	        {
+	            @Override
+	            public void onError(Request request, Exception e)
+	            {
+	                
+	            }
 	
-    @Override
-    public void onError(Request request, Exception e)
-    {
-        e.printStackTrace();
-    }
+	            @Override
+	            public void onResponse(String response)
+	            {
+	
+	            }
+	        });
+```
 
-    @Override
-    public void onResponse(User u)
-    {
-        mTv.setText(u.toString());
-    }
-});
+### POST请求
+
+```java
+ OkHttpUtils
+    .post()
+    .url(url)
+    .addParams("username", "hyman")
+    .addParams("password", "123")
+    .build()
+    .execute(callback);
 
 ```
 
-如果你的项目所有的框是一致的，或者可以分类，你可以按照如下方式编写几个模板：
+### Post String
 
 ```java
-public abstract class MyResultCallback<T> extends ResultCallback<T>
+  OkHttpUtils
+    .postString()
+    .url(url)
+    .content(new Gson().toJson(new User("zhy", "123")))
+    .build()
+    .execute(new MyStringCallback());
+```
+
+提交一个Gson字符串到服务器端。
+
+### Post File
+
+```java
+ OkHttpUtils
+	.postFile()
+	.url(url)
+	.file(file)
+	.build()
+	.execute(new MyStringCallback());
+```
+将文件作为请求体，发送到服务器。
+
+
+### Post表单形式上传文件
+
+```java
+OkHttpUtils.post()//
+    .addFile("mFile", "messenger_01.png", file)//
+    .addFile("mFile", "test1.txt", file2)//
+    .url(url)
+    .params(params)//
+    .headers(headers)//
+    .build()//
+    .execute(new MyStringCallback());
+```
+
+支持单个多个文件，`addFile`的第一个参数为文件的key，即类别表单中`<input type="file" name="mFile"/>`的name属性。
+
+### 自定义CallBack
+
+目前内部包含`StringCallBack`,`FileCallBack`,`BitmapCallback`，可以根据自己的需求去自定义Callback，例如希望回调User对象：
+
+```java
+public abstract class UserCallback extends Callback<User>
 {
-
-   @Override
-   public void onBefore()
-   {
-       super.onBefore();
-       //显示等待框等
-       setTitle("loading...");
-   }
-
-   @Override
-   public void onAfter()
-   {
-       super.onAfter();
-       //隐藏等待框等
-       setTitle("Sample-okHttp");
-   }
+    @Override
+    public User parseNetworkResponse(Response response) throws IOException
+    {
+        String string = response.body().string();
+        User user = new Gson().fromJson(string, User.class);
+        return user;
+    }
 }
 
-```
-
-### 如何取消某个请求
-
-目前对于支持的方法都添加了最后一个参数`Object tag`，取消则通过` OkHttpClientManager.cancelTag(tag)`执行。
-
-例如：在Activity中，当Activity销毁取消某个请求：
-
-```java
-OkHttpClientManager.getAsyn("http://www.csdn.net/", new MyResultCallback<String>()
-        {
-            @Override
-            public void onError(Request request, Exception e)
-            {
-                Log.e("TAG", "onError" + e.getMessage());
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(String u)
-            {
-                Log.e("TAG", "onResponse" + MainActivity.this);
-                mTv.setText(u);
-            }
-        }, this);//注意这里将Activity.this作为tag
-        
-```
-Activity的onDestory中
-
-```java
-@Override
-    protected void onDestroy()
+ OkHttpUtils
+    .get()//
+    .url(url)//
+    .addParams("username", "hyman")//
+    .addParams("password", "123")//
+    .build()//
+    .execute(new UserCallback()
     {
-        super.onDestroy();
-        OkHttpClientManager.cancelTag(this);//取消以Activity.this作为tag的请求
+        @Override
+        public void onError(Request request, Exception e)
+        {
+            mTv.setText("onError:" + e.getMessage());
+        }
+
+        @Override
+        public void onResponse(User response)
+        {
+            mTv.setText("onResponse:" + response.username);
+        }
+    });
+
+```
+
+通过`parseNetworkResponse `回调的response进行解析，该方法运行在子线程，所以可以进行任何耗时操作，详细参见sample。
+
+
+### 下载文件
+
+```java
+ OkHttpUtils//
+	.get()//
+	.url(url)//
+	.build()//
+	.execute(new FileCallBack(Environment.getExternalStorageDirectory().getAbsolutePath(), "gson-2.2.1.jar")//
+	{
+	    @Override
+	    public void inProgress(float progress)
+	    {
+	        mProgressBar.setProgress((int) (100 * progress));
+	    }
+	
+	    @Override
+	    public void onError(Request request, Exception e)
+	    {
+	        Log.e(TAG, "onError :" + e.getMessage());
+	    }
+	
+	    @Override
+	    public void onResponse(File file)
+	    {
+	        Log.e(TAG, "onResponse :" + file.getAbsolutePath());
+	    }
+	});
+```
+
+注意下载文件可以使用`FileCallback`，需要传入文件需要保存的文件夹以及文件名。
+
+
+### 显示图片
+
+```java
+ OkHttpUtils
+    .get()//
+    .url(url)//
+    .build()//
+    .execute(new BitmapCallback()
+    {
+        @Override
+        public void onError(Request request, Exception e)
+        {
+            mTv.setText("onError:" + e.getMessage());
+        }
+
+        @Override
+        public void onResponse(Bitmap bitmap)
+        {
+            mImageView.setImageBitmap(bitmap);
+        }
+    });
+```
+
+显示图片，回调传入`BitmapCallback`即可。
+
+
+### 上传下载的进度显示
+
+```java
+new Callback<T>()
+{
+    //...
+    @Override
+    public void inProgress(float progress)
+    {
+       //use progress: 0 ~ 1
     }
+}
 ```
 
+callback回调中有`inProgress `方法，直接复写即可。
 
-### 说明
-
-目前比较常见的API可以直接通过OkHttpClientManager.methodName访问，当然有很多不常用的方法，会被封装在对应的模块内部，大体分为以下几个模块：
-
-* HttpsDelegate
-* DownloadDelegate
-* DisplayImageDelegate
-* GetDelegate
-* UploadDelegate
-* PostDelegate
-
-如果你有比较特殊的需求，不放通过OkHttpClientManager.getXXXDelegate().methodName去访问。
-
-比如加载图片：
+### HEAD、DELETE、PUT、PATCH
 
 ```java
-OkHttpClientManager.getDisplayImageDelegate().displayImage();
+
+OkHttpUtils
+     .put()//also can use delete() ,head() , patch()
+     .requestBody(RequestBody.create(null, "may be something"))//
+     .build()//
+     .execute(new MyStringCallback());
 ```
 
-比如get请求，直接将文件作为请求体：
+如果需要requestBody，例如：PUT、PATCH，自行构造进行传入。
+
+
+
+### 同步的请求
+
+```
+ Response response = OkHttpUtils
+    .get()//
+    .url(url)//
+    .tag(this)//
+    .build()//
+    .execute();
+```
+
+execute方法不传入callback即为同步的请求，返回Response。
+
+
+### 取消单个请求
 
 ```java
-OkHttpClientManager.getPostDelegate().post(url,file,callback);
+ RequestCall call = OkHttpUtils.get().url(url).build();
+ call.cancel();
+ 
 ```
 
-### 没有提供的方法？
+### 根据tag取消请求
 
-对于get、post方式的方法，如果工具类中没有提供，那么可以通过如下方式：
+目前对于支持的方法都添加了最后一个参数`Object tag`，取消则通过` OkHttpUtils.cancelTag(tag)`执行。
 
-#### Get
+例如：在Activity中，当Activity销毁取消请求：
 
-```java
-//同步
-OkHttpClientManager.getHttpDelegate().get(request);
-//异步
-OkHttpClientManager.getHttpDelegate().getAsyn(request, callback);
+```
+OkHttpUtils
+    .get()//
+    .url(url)//
+    .tag(this)//
+    .build()//
+
+@Override
+protected void onDestroy()
+{
+    super.onDestroy();
+    //可以取消同一个tag的
+    OkHttpUtils.cancelTag(this);//取消以Activity.this作为tag的请求
+}
+```
+比如，当前Activity页面所有的请求以Activity对象作为tag，可以在onDestory里面统一取消。
+
+## 混淆
+
+```
+#okhttputils
+-dontwarn com.zhy.http.**
+-keep class com.zhy.http.**{*;}
+
+
+#okhttp
+-dontwarn okhttp3.**
+-keep class okhttp3.**{*;}
+
+
+#okio
+-dontwarn okio.**
+-keep class okio.**{*;}
+
 
 ```
 
-#### Post
 
-```java
-//同步
-OkHttpClientManager.getPostDelegate().post(request);
-//异步
-OkHttpClientManager.getPostDelegate().postAsyn(request, callback);
 
-```
-
-自己去构造Request.
-
-如果还不能满足你的需求，那么只好整个过程都自己去书写了，但是你肯定不希望项目有中出现两个`OkHttpClient`对象，那么对于`OkHttpClient`对象你可以通过
-
-```java
-OkHttpClient client = OkHttpClientManager.getClient();
-```
-进行获取。
 
 
 
